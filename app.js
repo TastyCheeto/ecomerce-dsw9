@@ -8,9 +8,16 @@ const ejsLayouts   = require('express-ejs-layouts');
 const sequelize    = require('./config/database');
 const { Product, Order, OrderItem } = require('./models');
 
+
+
 const productRoutes  = require('./routes/products');
 const cartRoutes     = require('./routes/cart');
 const checkoutRoutes = require('./routes/checkout');
+const storeAuthRoutes = require('./routes/storeAuth');
+const { attachLocals } = require('./middleware/authMiddleware');
+const userAuthRoutes = require('./routes/userAuth');
+
+
 
 const app  = express();
 const port = process.env.PORT || 3000;
@@ -30,6 +37,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: { maxAge: 3600000 }
 }));
+// Después de app.use(session(...)):
+app.use(attachLocals);
 // Middleware: carrito vacio en sesion si no existe
 app.use((req, res, next) => {
   if (!req.session.cart) {
@@ -49,6 +58,10 @@ app.use((req, res, next) => {
 app.use('/',         productRoutes);
 app.use('/cart',     cartRoutes);
 app.use('/checkout', checkoutRoutes);
+// Rutas — junto a los app.use() existentes:
+app.use('/store', storeAuthRoutes);
+// Ruta (junto a las demás):
+app.use('/user', userAuthRoutes);
 
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Pagina no encontrada' });
@@ -67,13 +80,6 @@ sequelize.sync()
   });
   // app.js — AGREGAR (1/4)
 
-// Imports — junto a los require existentes:
-const storeAuthRoutes = require('./routes/storeAuth');
-const { attachLocals } = require('./middleware/authMiddleware');
-
-// Después de app.use(session(...)):
-app.use(attachLocals);
-
 // Las vistas de auth y admin tienen su propio HTML completo con admin.css
 // y NO deben pasar por layout.ejs. Este middleware lo desactiva para esas rutas.
 app.use(['/store/login', '/store/register',
@@ -82,12 +88,12 @@ app.use(['/store/login', '/store/register',
   (req, res, next) => { res.locals.layout = false; next(); }
 );
 
-// Rutas — junto a los app.use() existentes:
-app.use('/store', storeAuthRoutes);
+
+
+
+
+
 // app.js — AGREGAR (2/4)
 
 // Import:
-const userAuthRoutes = require('./routes/userAuth');
 
-// Ruta (junto a las demás):
-app.use('/user', userAuthRoutes);
